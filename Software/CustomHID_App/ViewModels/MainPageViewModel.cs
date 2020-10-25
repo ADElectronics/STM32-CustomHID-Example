@@ -83,6 +83,15 @@ namespace CustomHID_App.ViewModels
 		}
 		#endregion
 
+		#region ShowInFeatureReport
+		bool _ShowInFeatureReport;
+		public bool ShowInFeatureReport
+		{
+			get { return _ShowInFeatureReport; }
+			set { SetProperty<bool>(ref _ShowInFeatureReport, value); }
+		}
+		#endregion
+
 		public UInt16 DeviceVID { get; set; } = 0xADAD;
 		public UInt16 DevicePID { get; set; } = 0x1000;
 
@@ -198,9 +207,12 @@ namespace CustomHID_App.ViewModels
 			{
 				AvalibleDevices = UsbHidPort.GetDevicesList();
 
-				if(!AvalibleDevices.Contains(SelectedDevice)) // бесполезно, но оставлю... догадались почему?
+				if(AvalibleDevices != null)
                 {
-					SelectedDevice = AvalibleDevices.First();
+					if (!AvalibleDevices.Contains(SelectedDevice)) // бесполезно, но оставлю... догадались почему?
+					{
+						SelectedDevice = AvalibleDevices.First();
+					}
 				}
 			}
 		}
@@ -261,7 +273,19 @@ namespace CustomHID_App.ViewModels
 				for (UInt16 i = 0; i < USB.SpecifiedDevice.FeatureReportLength; i++)
 					report[i] = ReportOutput[i].Data;
 				USB.WriteFeatureReport(report, ref respond);
-				// TODO: ...
+				
+				if(ShowInFeatureReport)
+                {
+					for (UInt16 i = 0; i < respond.Length; i++)
+					{
+						if (ReportInput[i].Data != respond[i])
+							ReportInput[i].Color = Brushes.Red;
+						else
+							ReportInput[i].Color = Brushes.Black;
+
+						ReportInput[i].Data = respond[i];
+					}
+				}
 			}
 		}
         #endregion

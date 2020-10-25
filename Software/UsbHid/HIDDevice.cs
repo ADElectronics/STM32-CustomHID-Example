@@ -18,7 +18,9 @@ namespace UsbHid
 	public abstract class HIDDevice : Win32Usb, IDisposable
 	{
 		FileStream m_iFile;
+		FileStream m_oFile;
 		IntPtr m_hHandle;
+		IntPtr m_hWriteHandle;
 
 		// https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/_hid/
 
@@ -55,11 +57,20 @@ namespace UsbHid
 						m_iFile.Close();
 						m_iFile = null;
 					}
+
+					if (m_oFile != null)
+					{
+						m_oFile.Close();
+						m_oFile = null;
+					}
 				}
 				if (m_hHandle != IntPtr.Zero)
 				{
-
 					CloseHandle(m_hHandle);
+				}
+				if (m_hWriteHandle != IntPtr.Zero)
+				{
+					CloseHandle(m_hWriteHandle);
 				}
 			}
 			catch (Exception ex)
@@ -76,9 +87,10 @@ namespace UsbHid
 		/// <param name="strPath">Path to the device</param>
 		private void Initialise(string strPath)
 		{
-			m_hHandle = CreateFile(strPath, GENERIC_READ | GENERIC_WRITE, 0, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
+			m_hHandle = CreateFile(strPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
+			m_hWriteHandle = CreateFile(strPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
 
-			if ( m_hHandle != InvalidHandleValue || m_hHandle == null)
+			if ( m_hHandle != InvalidHandleValue || m_hHandle == null) // m_hWriteHandle считаем аналогичным 
 			{
 				IntPtr lpData;
 				if (HidD_GetPreparsedData(m_hHandle, out lpData))
@@ -91,10 +103,14 @@ namespace UsbHid
 						OutputReportLength = oCaps.OutputReportByteLength;
 						FeatureReportLength = oCaps.FeatureReportByteLength;
 
-						//m_oFile = new FileStream(m_hHandle, FileAccess.Read | FileAccess.Write, true, m_nInputReportLength, true);
+						if (OutputReportLength > 0)
+						{
+							m_oFile = new FileStream(new SafeFileHandle(m_hWriteHandle, false), FileAccess.Write, OutputReportLength, true);
+						}
+
 						if (InputReportLength > 0)
                         {
-							m_iFile = new FileStream(new SafeFileHandle(m_hHandle, false), FileAccess.Read | FileAccess.Write, InputReportLength, true);
+							m_iFile = new FileStream(new SafeFileHandle(m_hHandle, false), FileAccess.Read, InputReportLength, true);
 							//HidD_FlushQueue(m_hHandle);
 							BeginAsyncRead();
 						}
@@ -116,6 +132,7 @@ namespace UsbHid
 			else
 			{
 				m_hHandle = IntPtr.Zero;
+				m_hWriteHandle = IntPtr.Zero;
 				throw HIDDeviceException.GenerateWithWinError("Failed to create device file");
 			}
 		}
@@ -170,13 +187,23 @@ namespace UsbHid
 			bool success = false;
 			try
 			{
-				success = HidD_SetOutputReport(m_hHandle, oOutRep.Buffer, oOutRep.BufferLength);
+				// какой то необьяснимый баг... HidD_SetOutputReport отсылает в устройство репорт как Feature !
+				//success = HidD_SetOutputReport(m_hHandle, oOutRep.Buffer, oOutRep.BufferLength);
+				if (m_oFile.CanWrite)
+                {
+					m_oFile.Write(oOutRep.Buffer, 0, oOutRep.BufferLength);
+					success = true;
+				}	
 			}
-			catch (IOException)
+			catch (Exception ex)
 			{
-				HandleDeviceRemoved();
-				OnDeviceRemoved?.Invoke(this, new EventArgs());
-				Dispose();
+				// Если отправили с неправильным Report ID - то всё нормально
+				if(ex.HResult != -2147024809)
+                {
+					HandleDeviceRemoved();
+					OnDeviceRemoved?.Invoke(this, new EventArgs());
+					Dispose();
+				}
 			}
 			return success;
 		}

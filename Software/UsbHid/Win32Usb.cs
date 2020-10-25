@@ -1,3 +1,4 @@
+using Microsoft.Win32.SafeHandles;
 using System;
 using System.Runtime.InteropServices;
 
@@ -287,7 +288,13 @@ namespace UsbHid
         /// <returns></returns>
         [DllImport("kernel32.dll", SetLastError = true)]
         protected static extern IntPtr CreateFile([MarshalAs(UnmanagedType.LPStr)] string strName, uint nAccess, uint nShareMode, IntPtr lpSecurity, uint nCreationFlags, uint nAttributes, IntPtr lpTemplate);
-        
+        /*
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern SafeFileHandle CreateFile(string lpFileName, uint dwDesiredAccess,
+            uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition,
+            uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+        */
+
         /// <summary>
 		/// Closes a window handle. File handles, event handles, mutex handles... etc
 		/// </summary>
