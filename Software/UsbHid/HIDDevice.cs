@@ -90,7 +90,7 @@ namespace UsbHid
 			m_hHandle = CreateFile(strPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
 			m_hWriteHandle = CreateFile(strPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
 
-			if ( m_hHandle != InvalidHandleValue || m_hHandle == null) // m_hWriteHandle считаем аналогичным 
+			if ( m_hHandle != InvalidHandleValue || m_hHandle == null) // m_hWriteHandle пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
 			{
 				IntPtr lpData;
 				if (HidD_GetPreparsedData(m_hHandle, out lpData))
@@ -187,17 +187,20 @@ namespace UsbHid
 			bool success = false;
 			try
 			{
-				// какой то необьяснимый баг... HidD_SetOutputReport отсылает в устройство репорт как Feature !
+				// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ... HidD_SetOutputReport пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ Feature !
 				//success = HidD_SetOutputReport(m_hHandle, oOutRep.Buffer, oOutRep.BufferLength);
-				if (m_oFile.CanWrite)
+				if (m_oFile != null)
                 {
-					m_oFile.Write(oOutRep.Buffer, 0, oOutRep.BufferLength);
-					success = true;
+					if(m_oFile.CanWrite)
+                    {
+						m_oFile.Write(oOutRep.Buffer, 0, oOutRep.BufferLength);
+						success = true;
+					}
 				}	
 			}
 			catch (Exception ex)
 			{
-				// Если отправили с неправильным Report ID - то всё нормально
+				// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Report ID - пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 				if(ex.HResult != -2147024809)
                 {
 					HandleDeviceRemoved();
